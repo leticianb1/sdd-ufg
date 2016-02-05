@@ -1,19 +1,20 @@
 <?php
 namespace App\Model\Entity;
 
+use App\View\Helper\UtilsHelper;
 use Cake\ORM\Entity;
 
 /**
- * Role Entity.
+ * ClazzesSchedulesLocal Entity.
  *
- * @property int $id
- * @property string $type
- * @property int $teacher_id
- * @property \App\Model\Entity\Teacher $teacher
- * @property int $knowledge_id
- * @property \App\Model\Entity\Knowledge $knowledge
+ * @property int $clazz_id
+ * @property \App\Model\Entity\Clazze $clazze
+ * @property int $schedule_id
+ * @property \App\Model\Entity\Schedule $schedule
+ * @property int $local_id
+ * @property \App\Model\Entity\Local $local
  */
-class Role extends Entity
+class ClazzesSchedulesLocal extends Entity
 {
 
     /**
@@ -26,14 +27,6 @@ class Role extends Entity
      * @var array
      */
     protected $_accessible = [
-        '*' => true,
-        'id' => false,
+        '*' => true
     ];
-
-    public function _getDisplayType() {
-        if ($this->type == 'FACILITATOR') {
-            return __('Facilitador');
-        }
-        return __('Coordenador');
-    }
 }

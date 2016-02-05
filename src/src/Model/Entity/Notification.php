@@ -4,16 +4,16 @@ namespace App\Model\Entity;
 use Cake\ORM\Entity;
 
 /**
- * Role Entity.
+ * Notification Entity.
  *
  * @property int $id
  * @property string $type
- * @property int $teacher_id
- * @property \App\Model\Entity\Teacher $teacher
- * @property int $knowledge_id
- * @property \App\Model\Entity\Knowledge $knowledge
+ * @property string $description
+ * @property bool $read
+ * @property int $user_id
+ * @property \App\Model\Entity\User $user
  */
-class Role extends Entity
+class Notification extends Entity
 {
 
     /**
@@ -29,11 +29,4 @@ class Role extends Entity
         '*' => true,
         'id' => false,
     ];
-
-    public function _getDisplayType() {
-        if ($this->type == 'FACILITATOR') {
-            return __('Facilitador');
-        }
-        return __('Coordenador');
-    }
 }
