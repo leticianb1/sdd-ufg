@@ -1,19 +1,19 @@
 <?php
 namespace App\Model\Table;
 
-use App\Model\Entity\ClazzesTeacher;
+use App\Model\Entity\KnowledgesTeacher;
 use Cake\ORM\Query;
 use Cake\ORM\RulesChecker;
 use Cake\ORM\Table;
 use Cake\Validation\Validator;
 
 /**
- * ClazzesTeachers Model
+ * KnowledgesTeachers Model
  *
- * @property \Cake\ORM\Association\BelongsTo $Clazzes
  * @property \Cake\ORM\Association\BelongsTo $Teachers
+ * @property \Cake\ORM\Association\BelongsTo $Knowledges
  */
-class ClazzesTeachersTable extends Table
+class KnowledgesTeachersTable extends Table
 {
 
     /**
@@ -26,16 +26,16 @@ class ClazzesTeachersTable extends Table
     {
         parent::initialize($config);
 
-        $this->table('clazzes_teachers');
-        $this->displayField('clazz_id');
-        $this->primaryKey(['clazz_id', 'teacher_id']);
+        $this->table('knowledges_teachers');
+        $this->displayField('teacher_id');
+        $this->primaryKey(['teacher_id', 'knowledge_id']);
 
-        $this->belongsTo('Clazzes', [
-            'foreignKey' => 'clazz_id',
-            'joinType' => 'INNER'
-        ]);
         $this->belongsTo('Teachers', [
             'foreignKey' => 'teacher_id',
+            'joinType' => 'INNER'
+        ]);
+        $this->belongsTo('Knowledges', [
+            'foreignKey' => 'knowledge_id',
             'joinType' => 'INNER'
         ]);
     }
@@ -49,9 +49,9 @@ class ClazzesTeachersTable extends Table
     public function validationDefault(Validator $validator)
     {
         $validator
-            ->add('status', 'enum', ['rule' => ['inList', ['PENDING', 'SELECTED', 'REJECTED'], true]])
-            ->requirePresence('status', 'create')
-            ->notEmpty('status');
+            ->add('level', 'valid', ['rule' => 'numeric'])
+            ->requirePresence('level', 'create')
+            ->notEmpty('level');
 
         return $validator;
     }
@@ -65,27 +65,8 @@ class ClazzesTeachersTable extends Table
      */
     public function buildRules(RulesChecker $rules)
     {
-        $rules->add($rules->existsIn(['clazz_id'], 'Clazzes'));
         $rules->add($rules->existsIn(['teacher_id'], 'Teachers'));
+        $rules->add($rules->existsIn(['knowledge_id'], 'Knowledges'));
         return $rules;
     }
-	
-	public function getIntentsByTeacher($teacherId){
-		$clazzesTeachers = $this
-			->find('all')
-			->contain([
-				'Clazzes'=> function($q) {
-					return $q->select(['Clazzes.name']);
-				},
-				'Clazzes.Subjects' => function($q) {
-					return $q->select(['Subjects.name']);
-				},
-				'Teachers' => function($q) {
-					return $q->select(['id']);
-				}
-			])
-			->where(['ClazzesTeachers.teacher_id' => $teacherId]);
-
-		return $clazzesTeachers;
-	}
 }
