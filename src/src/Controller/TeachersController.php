@@ -17,6 +17,14 @@ class TeachersController extends AppController
 	public function isAuthorized($user)
 	{
 		//Only admin or teacher itself can edit the teacher
+		if (in_array($this->request->action, ['view', 'allocateClazzes'])) {
+		    $teacherId = (int)$this->request->params['pass'][0];
+
+		    if ($this->loggedUser->teacher->id == $teacherId) {
+                return true;
+            }
+		}
+
 		if (in_array($this->request->action, ['edit', 'allocateClazzes'])) {
 			$teacherId = (int)$this->request->params['pass'][0];
 
@@ -37,16 +45,18 @@ class TeachersController extends AppController
      */
     public function index()
     {
-
+        $nameFilter = '%';
+        if ($this->request->query && $this->request->query['name']) {
+            $nameFilter = '%' . $this->request->query['name'] . '%';
+        }
 		if ($this->loggedUser->canAdmin()) {
-		    $this->set('teachers', $this->paginate($this->Teachers->find('all')->contain(['Users'])));
+		    $this->set('teachers', $this->paginate($this->Teachers->find('all',
+                ['conditions' => ['Users.name like' => $nameFilter]])
+                ->contain(['Users'])));
         } else {
-			$this->set('teachers', $this->paginate($this->Teachers->find('all')
-				->contain(['Users' ])
-				->where('Users', function($q) {
-					return $q->where(['Teachers.id' => $this->loggedUser->teacher->id]);
-				})
-			));
+            $this->set('teachers', $this->paginate($this->Teachers->find('all',
+                            ['conditions' => ['Users.name like' => $nameFilter, 'Teachers.id' => $this->loggedUser->teacher->id]])
+                            ->contain(['Users'])));
 		}
 
 		$this->set('_serialize', ['teachers']);
@@ -96,18 +106,36 @@ class TeachersController extends AppController
             }
         }
 
-        $clazzes = TableRegistry::get('Clazzes')->find()->innerJoinWith(
-            'Teachers', function ($q) use ($id) {
-                return $q->where(['Teachers.id' => $id]);
-            }
-        );
-
         $scheduleLocals = [];
-        foreach ($clazzes as $clazze) {
-            foreach($clazze->scheduleLocals as $scheduleLocal) {
-                $scheduleLocals[] = $scheduleLocal;
+
+        $currentProcess = TableRegistry::get('Processes')->find('all', [
+            'conditions' => ['Processes.initial_date <=' => new \DateTime(), 'Processes.status != ' => 'CANCELLED'],
+            'order' => ['Processes.initial_date' => 'DESC']
+        ])->first();
+
+        if ($currentProcess) {
+            $clazzes = TableRegistry::get('Clazzes')->find()
+                    ->innerJoinWith(
+                        'Teachers', function ($q) use ($id) {
+                            return $q->where(['Teachers.id' => $id]);
+                        }
+                    )
+                    ->innerJoinWith(
+                          'Processes', function ($q) use ($currentProcess) {
+                              return $q->where(['Processes.id' => $currentProcess->id]);
+                          }
+                      )
+                    ->contain(['ClazzesSchedulesLocals.Locals', 'ClazzesSchedulesLocals.Schedules'])->all();
+
+            foreach ($clazzes as $clazze) {
+                foreach($clazze->scheduleLocals as $scheduleLocal) {
+                    $scheduleLocals[] = $scheduleLocal;
+                }
             }
         }
+
+
+
 
         $this->set('teacher', $teacher);
         $this->set('scheduleLocals', $scheduleLocals);
@@ -305,7 +333,8 @@ class TeachersController extends AppController
 					$query = $table_clazzes_teachers->query();
 					$query->delete()->where([
 							'clazz_id' => $clazz_id,
-							'teacher_id' => $id
+							'teacher_id' => $id,
+							'status != ' => 'SELECTED'
 					])->execute();
 
 					if ($query) {
@@ -356,7 +385,7 @@ class TeachersController extends AppController
             ->contain([
                 'Subjects.Courses', 'Subjects.Knowledges',
                 'ClazzesSchedulesLocals.Locals', 'ClazzesSchedulesLocals.Schedules',
-                'Processes'
+                'Processes', 'ClazzesTeachers'
 			])
 			->innerJoinWith('Processes', function ($q) use ($params) {
 				return $q->where(['Processes.status' => 'OPENED']);
@@ -378,7 +407,7 @@ class TeachersController extends AppController
 					'Processes' => function ($q) use ($params) {
 						return $q->where(['Processes.id LIKE ' => '%' . $params['process'] . '%']);
 					},
-					'ClazzesSchedulesLocals.Locals', 'ClazzesSchedulesLocals.Schedules'
+					'ClazzesSchedulesLocals.Locals', 'ClazzesSchedulesLocals.Schedules', 'ClazzesTeachers'
 				])
 				->innerJoinWith('ClazzesSchedulesLocals.Locals', function ($q) use ($params) {
 						return $q->where(['Locals.name LIKE ' => '%' . $params['local'] . '%'])
